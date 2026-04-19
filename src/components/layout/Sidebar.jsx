@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useApp } from '../context/AppContext'
+import { useApp } from '../../context/AppContext'
 
 const NAV_ITEMS = [
   { path: '/dashboard', icon: 'dashboard', label: 'หน้าหลัก' },
