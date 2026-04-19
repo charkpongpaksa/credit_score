@@ -1,33 +1,82 @@
 import axiosInstance from '../axios'
-import { AuthResponse, LoginValues } from '../../types/auth'
+import { AuthResponse, LoginValues, AuthUser } from '../../types/auth'
+import {
+  setAccessToken,
+  setRefreshToken,
+  getRefreshToken,
+  removeAllTokens,
+} from '../../lib/auth/tokenStorage'
 
-/**
- * Placeholder login service.
- * NOTE: Current backend (http://127.0.0.1:8000) does NOT have auth endpoints.
- * This is implemented as a future-ready pattern.
- */
-export const loginService = async (
-  values: LoginValues
-): Promise<AuthResponse> => {
-  console.warn('Backend currently has no auth. Using placeholder login.')
-  // const response = await axiosInstance.post('/auth/login', values);
-  // return response.data;
-  
-  // Mocking response for UI development until backend adds auth
-  return {
-    access_token: 'mock_token',
-    token_type: 'Bearer',
-    user: { id: '1', email: values.email, name: 'Demo Officer', role: 'Loan Officer' }
+const USER_KEY = 'auth_user'
+
+/** ล็อกอินด้วย POST /api/v1/auth/login */
+export const loginService = async (values: LoginValues): Promise<AuthResponse> => {
+  const response = await axiosInstance.post<AuthResponse>('/api/v1/auth/login', {
+    usernameOrEmail: values.usernameOrEmail,
+    password: values.password,
+    rememberMe: values.rememberMe ?? false,
+  })
+  const data = response.data
+  if (data.success) {
+    setAccessToken(data.data.accessToken)
+    setRefreshToken(data.data.refreshToken)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(USER_KEY, JSON.stringify(data.data.user))
+    }
+  }
+  return data
+}
+
+/** Refresh access token ด้วย POST /api/v1/auth/refresh */
+export const refreshTokenService = async (): Promise<string | null> => {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return null
+  try {
+    const response = await axiosInstance.post<AuthResponse>('/api/v1/auth/refresh', { refreshToken })
+    if (response.data.success) {
+      setAccessToken(response.data.data.accessToken)
+      setRefreshToken(response.data.data.refreshToken)
+      return response.data.data.accessToken
+    }
+    return null
+  } catch {
+    return null
   }
 }
 
-export const registerService = async (
-  values: any
-): Promise<any> => {
-  console.warn('Backend currently has no auth. Using placeholder register.')
-  return { status: 'success', message: 'Placeholder registration success' }
+/** ออกจากระบบ POST /api/v1/auth/logout */
+export const logoutService = async (): Promise<void> => {
+  const refreshToken = getRefreshToken()
+  try {
+    if (refreshToken) {
+      await axiosInstance.post('/api/v1/auth/logout', { refreshToken })
+    }
+  } finally {
+    removeAllTokens()
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(USER_KEY)
+    }
+  }
 }
 
-export const logoutService = async (): Promise<void> => {
-  console.log('Logging out (local cleanup only)')
+/** ดึงข้อมูล user จาก GET /api/v1/auth/me */
+export const getMeService = async (): Promise<AuthUser | null> => {
+  try {
+    const response = await axiosInstance.get<{ success: boolean; data: AuthUser }>('/api/v1/auth/me')
+    return response.data.data
+  } catch {
+    return null
+  }
+}
+
+/** อ่าน user ที่เก็บใน localStorage */
+export const getStoredUser = (): AuthUser | null => {
+  if (typeof window === 'undefined') return null
+  const raw = localStorage.getItem(USER_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as AuthUser
+  } catch {
+    return null
+  }
 }

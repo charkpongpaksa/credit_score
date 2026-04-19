@@ -18,11 +18,23 @@ export default function LoginPage() {
       return
     }
     setLoading(true)
+    setError('')
     try {
-      await loginService({ email: form.username, password: form.password })
+      await loginService({
+        usernameOrEmail: form.username,
+        password: form.password,
+        rememberMe: true,
+      })
       router.push('/dashboard')
     } catch (err: any) {
-      setError(err.message || 'เข้าสู่ระบบล้มเหลว')
+      const status = err?.response?.status
+      if (status === 401) {
+        setError('Username/Email หรือรหัสผ่านไม่ถูกต้อง')
+      } else if (status === 403) {
+        setError('บัญชีนี้ไม่มีสิทธิ์เข้าถึงระบบ')
+      } else {
+        setError(err?.response?.data?.message || err.message || 'เข้าสู่ระบบล้มเหลว กรุณาลองใหม่อีกครั้ง')
+      }
     } finally {
       setLoading(false)
     }
@@ -77,15 +89,20 @@ export default function LoginPage() {
               />
             </Field>
 
-            {error && <p className="text-risk-high-dark text-sm">{error}</p>}
+            {error && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-risk-high-bg text-risk-high-text text-sm border border-risk-high-border/30">
+                <span className="material-symbols-outlined !text-[16px]">error</span>
+                {error}
+              </div>
+            )}
 
-            <Button onClick={handleLogin} disabled={loading} fullWidth className="mt-2 py-3" icon="">
+            <Button onClick={handleLogin} disabled={loading} loading={loading} fullWidth className="mt-2 py-3" icon="">
               {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
             </Button>
           </div>
 
           <p className="mt-8 text-[12px] text-slate-400 text-center uppercase tracking-wider font-medium">
-            Demo Environment Access
+            Analytical Sanctuary · Credit Risk System
           </p>
         </div>
       </div>

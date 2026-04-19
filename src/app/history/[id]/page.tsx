@@ -1,110 +1,391 @@
+'use client'
+
+import React, { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
-import Card from '@/components/ui/Card'
-import { getPredictionsService } from '@/services/prediction'
-import RiskBadge from '@/components/ui/RiskBadge'
 import Button from '@/components/ui/Button'
-import { redirect } from 'next/navigation'
+import {
+  getAssessmentDetail,
+  getAssessmentRiskFactors,
+  getAssessmentRecommendations,
+} from '@/services/assessment'
+import {
+  AssessmentDetail,
+  RiskFactors,
+  Recommendations,
+  RiskLevel,
+  RiskFactor,
+  Recommendation,
+} from '@/types/assessment'
 
-export default async function DetailPage({ params }: { params: { id: string } }) {
-  const { id } = params
-  
-  // Example of Server Component Data Fetching in Next.js
-  let record = null
-  try {
-    const history = await getPredictionsService(200)
-    record = history.items.find(h => h.id.toString() === id)
-  } catch (err) {
-    console.error('Failed to fetch detail', err)
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function fmt(iso: string | null | undefined, withTime = false) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('th-TH', {
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok',
+    ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  })
+}
+
+function money(n: number | undefined) {
+  if (n === undefined || n === null) return '—'
+  return '฿ ' + n.toLocaleString('th-TH')
+}
+
+function pct(n: number | undefined) {
+  if (n === undefined || n === null) return '—'
+  return (n * 100).toFixed(1) + '%'
+}
+
+function tenure(months: number | undefined) {
+  if (months === undefined) return '—'
+  return `${Math.floor(months / 12)} ปี ${months % 12} เดือน`
+}
+
+const MARITAL: Record<string, string> = {
+  SINGLE: 'โสด', MARRIED: 'สมรส', DIVORCED: 'หย่าร้าง', WIDOWED: 'หม้าย', CIVIL_PARTNERSHIP: 'อยู่ร่วมกัน',
+}
+const EMP_TYPE: Record<string, string> = {
+  FULL_TIME: 'พนักงานประจำ', PART_TIME: 'ชั่วคราว/พาร์ทไทม์', SELF_EMPLOYED: 'อาชีพอิสระ', BUSINESS_OWNER: 'เจ้าของกิจการ',
+}
+const LOAN_PURPOSE: Record<string, string> = {
+  HOME_PURCHASE: 'ซื้อบ้าน/อสังหาริมทรัพย์', HOME_IMPROVEMENT: 'ปรับปรุงบ้าน',
+  CAR: 'ซื้อรถ', EDUCATION: 'การศึกษา', BUSINESS: 'ธุรกิจ', PERSONAL: 'ใช้ส่วนตัว',
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+function Sk({ className }: { className?: string }) {
+  return <div className={`animate-pulse bg-slate-100 rounded-lg ${className}`} />
+}
+
+// ─── Section Card ─────────────────────────────────────────────────────────────
+function Section({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-card border border-slate-100">
+      <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-800 mb-5">
+        <span className="material-symbols-outlined text-[20px] text-brand">{icon}</span>
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
+
+// ─── Info Row ─────────────────────────────────────────────────────────────────
+function InfoRow({ label, value, accent }: { label: string; value: React.ReactNode; accent?: boolean }) {
+  return (
+    <div className="flex justify-between items-center py-2.5 border-b border-slate-50 last:border-0">
+      <span className="text-[13px] text-slate-500">{label}</span>
+      <span className={`text-[13px] font-semibold text-right ${accent ? 'text-brand text-[16px] font-bold' : 'text-slate-800'}`}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+// ─── Score Ring ───────────────────────────────────────────────────────────────
+function ScoreRing({ creditScore, score, riskLevel, primaryReason, recommendationType }: {
+  creditScore: number; score: number; riskLevel: RiskLevel; primaryReason: string; recommendationType: string
+}) {
+  const pct100 = Math.min(Math.max(score, 0), 100)
+  const R = 54, SW = 10, C = R + SW
+  const CIRC = 2 * Math.PI * R
+  const dash = (pct100 / 100) * CIRC
+
+  const cfg: Record<RiskLevel, { stroke: string; badge: string; badgeCls: string; icon: string; iconCls: string }> = {
+    LOW:    { stroke: '#22c55e', badge: 'ความเสี่ยงต่ำ (Low Risk)',   badgeCls: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: 'check_circle',  iconCls: 'text-emerald-500' },
+    MEDIUM: { stroke: '#8b5cf6', badge: 'ความเสี่ยงปานกลาง (Medium)', badgeCls: 'bg-violet-100 text-violet-700 border-violet-200',   icon: 'warning',       iconCls: 'text-violet-500'  },
+    HIGH:   { stroke: '#ef4444', badge: 'ความเสี่ยงสูง (High Risk)',   badgeCls: 'bg-red-100 text-red-700 border-red-200',           icon: 'error',         iconCls: 'text-red-500'     },
   }
+  const c = cfg[riskLevel]
 
-  if (!record) {
+  return (
+    <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-6 flex flex-col items-center gap-4">
+      <div className="relative" style={{ width: C * 2, height: C * 2 }}>
+        <svg width={C * 2} height={C * 2} viewBox={`0 0 ${C * 2} ${C * 2}`}>
+          <circle cx={C} cy={C} r={R} fill="none" stroke="#f1f5f9" strokeWidth={SW} />
+          <circle cx={C} cy={C} r={R} fill="none"
+            stroke={c.stroke} strokeWidth={SW}
+            strokeDasharray={`${dash} ${CIRC - dash}`}
+            strokeDashoffset={CIRC * 0.25}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-dasharray 0.8s ease' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`material-symbols-outlined text-[28px] ${c.iconCls}`} style={{ fontVariationSettings: "'FILL' 1" }}>{c.icon}</span>
+        </div>
+      </div>
+
+      <div className="text-center">
+        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">CREDIT SCORE</p>
+        <p className="text-5xl font-black text-slate-900 leading-none">{creditScore}</p>
+      </div>
+
+      <span className={`px-4 py-1.5 rounded-full text-[12px] font-bold border ${c.badgeCls}`}>{c.badge}</span>
+
+      {primaryReason && (
+        <div className="w-full bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">ข้อสรุปเบื้องต้น</p>
+          <p className="text-[13px] text-slate-600 leading-relaxed">{primaryReason}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Risk Factor Row ──────────────────────────────────────────────────────────
+function FactorRow({ f }: { f: RiskFactor }) {
+  const cfg = {
+    POSITIVE: { icon: 'trending_up',  cls: 'text-emerald-600 bg-emerald-50' },
+    NEGATIVE: { icon: 'trending_down', cls: 'text-red-600 bg-red-50'       },
+    NEUTRAL:  { icon: 'remove',        cls: 'text-slate-500 bg-slate-100'   },
+  }
+  const c = cfg[f.impactDirection] || cfg.NEUTRAL
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-slate-50 last:border-0">
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${c.cls}`}>
+        <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>{c.icon}</span>
+      </div>
+      <div className="flex-1">
+        <p className="text-[13px] font-semibold text-slate-700">{f.labelTh}</p>
+        {f.detail && <p className="text-[12px] text-slate-500 mt-0.5">{f.detail}</p>}
+      </div>
+      {f.impactScore !== undefined && (
+        <span className={`text-[11px] font-bold shrink-0 mt-1 ${f.impactDirection === 'POSITIVE' ? 'text-emerald-600' : f.impactDirection === 'NEGATIVE' ? 'text-red-600' : 'text-slate-400'}`}>
+          {f.impactDirection === 'POSITIVE' ? '+' : f.impactDirection === 'NEGATIVE' ? '-' : ''}{Math.abs(f.impactScore).toFixed(0)}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ─── Recommendation Card ──────────────────────────────────────────────────────
+function RecommCard({ r }: { r: Recommendation }) {
+  const cfg: Record<string, { icon: string; bg: string; border: string; text: string }> = {
+    APPROVE: { icon: 'check_circle', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
+    REJECT:  { icon: 'cancel',       bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-700'     },
+    REVIEW:  { icon: 'warning',      bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700'   },
+    INFO:    { icon: 'info',         bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-700'    },
+  }
+  const c = cfg[r.type] || cfg.INFO
+  return (
+    <div className={`flex gap-3 p-4 rounded-xl border ${c.bg} ${c.border} ${r.isPrimary ? 'ring-1 ring-offset-1 ring-current/20' : ''}`}>
+      <span className={`material-symbols-outlined text-[20px] shrink-0 mt-0.5 ${c.text}`} style={{ fontVariationSettings: "'FILL' 1" }}>{c.icon}</span>
+      <div>
+        <p className={`text-[13px] font-bold ${c.text}`}>{r.titleTh}{r.isPrimary && <span className="ml-1.5 text-[10px] font-bold opacity-60">PRIMARY</span>}</p>
+        <p className="text-[12px] text-slate-500 mt-0.5 leading-relaxed">{r.descriptionTh}</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function AssessmentDetailPage() {
+  const router = useRouter()
+  const params = useParams()
+  const id = params?.id as string
+
+  const [detail, setDetail]     = useState<AssessmentDetail | null>(null)
+  const [factors, setFactors]   = useState<RiskFactors | null>(null)
+  const [recoms, setRecoms]     = useState<Recommendations | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!id || id === 'undefined') { setError('ไม่พบรหัสเคสนี้'); setLoading(false); return }
+
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        // Load detail first (required), then risk-factors + recommendations in parallel (optional)
+        const det = await getAssessmentDetail(id)
+        setDetail(det)
+
+        const [fac, rec] = await Promise.allSettled([
+          getAssessmentRiskFactors(id),
+          getAssessmentRecommendations(id),
+        ])
+        if (fac.status === 'fulfilled') setFactors(fac.value)
+        if (rec.status === 'fulfilled') setRecoms(rec.value)
+      } catch (err: any) {
+        const status = err?.response?.status
+        if (status === 404) setError('ไม่พบข้อมูลเคสนี้ หรือถูกลบไปแล้ว')
+        else if (status === 403) setError('ไม่มีสิทธิ์ดูข้อมูลเคสนี้')
+        else setError('ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [id])
+
+  if (loading) {
     return (
       <div className="flex min-h-screen">
         <Sidebar />
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-app-bg">
-          <span className="material-symbols-outlined text-[64px] text-slate-200">find_in_page</span>
-          <p className="text-slate-500 font-medium tracking-tight">ไม่พบรายการที่ต้องการ</p>
-          <a href="/history">
-            <Button className="mt-2">กลับไปประวัติ</Button>
-          </a>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <TopBar breadcrumbs={[{ label: 'ประวัติการประเมิน', path: '/history' }, { label: 'กำลังโหลด...' }]} />
+          <main className="flex-1 p-7 bg-app-bg">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6"><Sk className="h-48" /><Sk className="h-40" /><Sk className="h-40" /></div>
+              <div className="space-y-6"><Sk className="h-72" /><Sk className="h-52" /></div>
+            </div>
+          </main>
         </div>
       </div>
     )
   }
 
-  const riskLevel = record.predictions[0].risk_band_en as 'low' | 'medium' | 'high'
-  const color = riskLevel === 'low' ? '#006329' : riskLevel === 'high' ? '#ba1a1a' : '#4059aa'
+  if (error || !detail) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-app-bg">
+          <span className="material-symbols-outlined text-[64px] text-slate-200">find_in_page</span>
+          <p className="text-slate-500 font-medium">{error || 'ไม่พบข้อมูลเคสนี้'}</p>
+          <Button variant="secondary" icon="arrow_back" onClick={() => router.push('/history')}>กลับไปหน้าประวัติ</Button>
+        </div>
+      </div>
+    )
+  }
+
+  const { assessment, applicantProfile: p, employmentInfo: emp, financialInfo: fin, debtInfos, result } = detail
+  const fullName = `${p.firstName} ${p.lastName}`
 
   return (
     <div className="flex min-h-screen bg-app-bg">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar breadcrumbs={[{ label: 'ประวัติการประเมิน', path: '/history' }, { label: record.id.toString() }]} />
-        <main className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-[1100px] mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-10">
-              <div>
-                <p className="text-[13px] text-slate-400 font-mono tracking-widest mb-1.5 uppercase">ID: #{record.id} • {new Date(record.created_at).toLocaleString('th-TH')}</p>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">รายละเอียดการประเมิน</h1>
-              </div>
-              <div className="flex gap-3 w-full sm:w-auto">
-                <a href="/history"><Button variant="secondary" icon="arrow_back">กลับไปประวัติ</Button></a>
-                <a href="/predict"><Button icon="refresh">ประเมินใหม่อีกครั้ง</Button></a>
-              </div>
-            </div>
+        <TopBar breadcrumbs={[{ label: 'ประวัติการประเมิน', path: '/history' }, { label: fullName }]} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 flex flex-col gap-8">
-                <Card>
-                  <h2 className="text-lg font-bold mb-6 text-slate-900 flex items-center gap-2.5">
-                    <span className="material-symbols-outlined icon-fill text-brand !text-[22px]">dns</span>
-                    Metadata
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6">
-                    {[
-                      { label: 'Model Version', value: record.model_version },
-                      { label: 'Threshold', value: record.threshold },
-                      { label: 'Client IP', value: record.client_ip },
-                      { label: 'Created At', value: record.created_at },
-                    ].map(item => (
-                      <div key={item.label} className="border-b border-slate-50 pb-2">
-                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">{item.label}</p>
-                        <p className="text-[15px] font-semibold text-slate-800">{item.value}</p>
+        <main className="flex-1 overflow-y-auto p-7">
+
+          {/* ── Sub-header ── */}
+          <div className="flex justify-between items-start flex-wrap gap-4 mb-6">
+            <div>
+              <p className="text-[12px] text-slate-400 font-mono tracking-wider mb-1">
+                {assessment.assessmentNo}
+                {result?.createdAt && ` • ${fmt(result.createdAt, true)}`}
+              </p>
+              <h1 className="text-[28px] font-bold text-slate-900 leading-tight">{fullName}</h1>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" icon="arrow_back" onClick={() => router.push('/history')}>กลับไปหน้าประวัติ</Button>
+              <Button icon="refresh" onClick={() => router.push('/predict')}>ประเมินใหม่อีกครั้ง</Button>
+            </div>
+          </div>
+
+          {/* ── Grid ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* ── Left col (2/3) ── */}
+            <div className="lg:col-span-2 flex flex-col gap-6">
+
+              {/* Customer Info */}
+              <Section icon="person" title="ข้อมูลลูกค้า">
+                <div className="grid grid-cols-2 gap-x-8">
+                  <InfoRow label="สถานภาพ" value={MARITAL[p.maritalStatus] || p.maritalStatus} />
+                  <InfoRow label="อายุ" value={`${p.ageYears || '—'} ปี`} />
+                  <InfoRow label="ประเภทการจ้างงาน" value={EMP_TYPE[emp.employmentType] || emp.employmentType} />
+                  <InfoRow label="อายุงาน" value={tenure(emp.jobTenureMonths)} />
+                  {emp.employerName && <InfoRow label="สถานที่ทำงาน" value={emp.employerName} />}
+                </div>
+                {(p.district || p.provinceCode) && (
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1">ที่อยู่ปัจจุบัน</p>
+                    <p className="text-[14px] text-slate-700">
+                      {[p.district, `จังหวัด ${p.provinceCode}`, p.postalCode].filter(Boolean).join(' ')}
+                    </p>
+                  </div>
+                )}
+              </Section>
+
+              {/* Financial Info */}
+              <Section icon="account_balance" title="ข้อมูลทางการเงิน">
+                <div className="grid grid-cols-2 gap-4 mb-5">
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <p className="text-[11px] text-slate-500 font-semibold mb-1">รายได้ต่อเดือน</p>
+                    <p className="text-[20px] font-bold text-brand">{money(emp.monthlyIncome)}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <p className="text-[11px] text-slate-500 font-semibold mb-1">ภาระหนี้รายเดือน</p>
+                    <p className="text-[20px] font-bold text-slate-700">{money(fin.monthlyDebtPayment)}</p>
+                  </div>
+                </div>
+                <InfoRow label="DSR (Debt Service Ratio)" value={pct(fin.debtServiceRatio)} />
+                <InfoRow label="วงเงินที่ขอสินเชื่อ" value={money(fin.requestedLoanAmount)} accent />
+                <InfoRow label="ระยะเวลาผ่อนชำระ" value={`${fin.loanTermMonths} เดือน`} />
+                <InfoRow label="วัตถุประสงค์สินเชื่อ" value={LOAN_PURPOSE[fin.loanPurposeCode] || fin.loanPurposeCode} />
+                {fin.netMonthlyIncome && <InfoRow label="รายได้สุทธิต่อเดือน (หลังหักหนี้)" value={money(fin.netMonthlyIncome)} />}
+                {emp.additionalIncome > 0 && <InfoRow label="รายได้เสริม" value={money(emp.additionalIncome)} />}
+              </Section>
+
+              {/* Debt Infos */}
+              {debtInfos && debtInfos.length > 0 && (
+                <Section icon="credit_card" title="รายละเอียดหนี้สิน">
+                  <div className="space-y-3">
+                    {debtInfos.map((d, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <div>
+                          <p className="text-[13px] font-semibold text-slate-700">
+                            {d.debtType.replace(/_/g, ' ')} {d.creditorName ? `· ${d.creditorName}` : ''}
+                          </p>
+                          <p className="text-[12px] text-slate-500 mt-0.5">ผ่อนรายเดือน {money(d.monthlyPayment)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[14px] font-bold text-slate-800">{money(d.outstandingAmount)}</p>
+                          {d.delinquentDays > 0 && <p className="text-[11px] text-red-500 font-semibold">ค้างชำระ {d.delinquentDays} วัน</p>}
+                          {d.isDefaulted && <p className="text-[11px] text-red-600 font-bold">⚠ ผิดนัดชำระ</p>}
+                        </div>
                       </div>
                     ))}
                   </div>
-                </Card>
+                </Section>
+              )}
+            </div>
 
-                <Card>
-                  <h2 className="text-lg font-bold mb-6 text-slate-900 flex items-center gap-2.5">
-                    <span className="material-symbols-outlined icon-fill text-brand !text-[22px]">analytics</span>
-                    Model Prediction Detail
-                  </h2>
-                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-4">
-                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
-                        <span className="text-sm font-medium text-slate-500">Default Probability</span>
-                        <span className="text-2xl font-black text-brand">{(record.predictions[0].default_probability * 100).toFixed(4)}%</span>
-                     </div>
-                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
-                        <span className="text-sm font-medium text-slate-500">Decision result</span>
-                        <span className="text-sm font-bold text-slate-800 text-right">{record.predictions[0].decision}</span>
-                     </div>
-                  </div>
-                </Card>
-              </div>
+            {/* ── Right col (1/3) ── */}
+            <div className="flex flex-col gap-6">
 
-              <div className="flex flex-col gap-6">
-                <Card className="text-center overflow-hidden border-t-4 bg-white shadow-xl" style={{ borderTopColor: color }}>
-                  <div className={`py-8 ${riskLevel === 'low' ? 'bg-risk-low-bg/5' : 'bg-risk-high-bg/5'}`}>
-                    <p className="text-[11px] text-slate-400 font-black uppercase tracking-[0.2em] mb-4">Risk Level</p>
-                    <p className="text-4xl font-black tracking-tighter mb-4 uppercase" style={{ color }}>{riskLevel}</p>
-                    <div className="flex justify-center">
-                      <RiskBadge level={riskLevel} label={record.predictions[0].risk_band} size="lg" />
-                    </div>
+              {result ? (
+                <ScoreRing
+                  creditScore={result.creditScore}
+                  score={result.score}
+                  riskLevel={result.riskLevel}
+                  primaryReason={result.primaryReason}
+                  recommendationType={result.recommendationType}
+                />
+              ) : (
+                <div className="bg-white rounded-2xl p-6 shadow-card border border-slate-100 flex flex-col items-center gap-3 text-slate-400">
+                  <span className="material-symbols-outlined text-[40px]">pending</span>
+                  <p className="text-sm font-medium">รอผลการประเมิน</p>
+                </div>
+              )}
+
+              {/* Risk Factors */}
+              {factors && factors.factors.length > 0 && (
+                <Section icon="warning" title="ปัจจัยที่ควรพิจารณาเพิ่มเติม">
+                  <div className="space-y-1">
+                    {factors.factors.map((f, i) => <FactorRow key={i} f={f} />)}
                   </div>
-                </Card>
-              </div>
+                </Section>
+              )}
+
+              {/* Recommendations */}
+              {recoms && recoms.recommendations.length > 0 && (
+                <Section icon="lightbulb" title="คำแนะนำการตัดสินใจ">
+                  <div className="space-y-3">
+                    {[...recoms.recommendations]
+                      .sort((a, b) => a.priority - b.priority)
+                      .map((r, i) => <RecommCard key={i} r={r} />)}
+                  </div>
+                </Section>
+              )}
             </div>
           </div>
         </main>
