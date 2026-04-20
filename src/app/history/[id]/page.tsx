@@ -360,7 +360,6 @@ export default function AssessmentDetailPage() {
                 {fin?.netMonthlyIncome && <InfoRow label="รายได้สุทธิต่อเดือน (หลังหักหนี้)" value={money(fin.netMonthlyIncome)} />}
                 {emp?.additionalIncome && emp.additionalIncome > 0 && <InfoRow label="รายได้เสริม" value={money(emp.additionalIncome)} />}
               </Section>
-
               {/* Debt Infos */}
               {debtInfos && debtInfos.length > 0 && (
                 <Section icon="credit_card" title="รายละเอียดหนี้สิน">
