@@ -1,4 +1,5 @@
 import axiosInstance from '../axios'
+import { extractApiData } from '../axios'
 import { PredictionsResponse } from '../../types/prediction'
 
 /**
@@ -8,8 +9,18 @@ import { PredictionsResponse } from '../../types/prediction'
 export const getPredictionsService = async (
   limit = 20
 ): Promise<PredictionsResponse> => {
-  const response = await axiosInstance.get('/predictions', {
-    params: { limit },
-  })
-  return response.data
+  try {
+    const response = await axiosInstance.get('/api/v1/predictions', {
+      params: { limit },
+    })
+    return extractApiData<PredictionsResponse>(response.data)
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      const legacyResponse = await axiosInstance.get('/predictions', {
+        params: { limit },
+      })
+      return extractApiData<PredictionsResponse>(legacyResponse.data)
+    }
+    throw error
+  }
 }

@@ -6,7 +6,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import Button from '@/components/ui/Button'
 import { getAssessmentList } from '@/services/assessment'
-import { AssessmentList, AssessmentListItem, RiskLevel, RecommendationType } from '@/types/assessment'
+import { AssessmentList, AssessmentListItem, RiskLevel } from '@/types/assessment'
 
 // ── Risk Badge ────────────────────────────────────────────────────────────────
 function RiskPill({ level }: { level: RiskLevel | null }) {
@@ -60,8 +60,9 @@ function RecText({ type }: { type: string | null }) {
 }
 
 // ── Avatar initials ───────────────────────────────────────────────────────────
-function AvatarInitials({ name, level }: { name: string; level: RiskLevel | null }) {
-  const initials = name.trim().split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '??'
+function AvatarInitials({ name, level }: { name: string | null | undefined; level: RiskLevel | null }) {
+  const safeName = name || '??'
+  const initials = safeName.trim().split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '??'
   const bg = level === 'HIGH' ? 'bg-red-100 text-red-600' : level === 'MEDIUM' ? 'bg-violet-100 text-violet-600' : 'bg-emerald-100 text-emerald-700'
   return (
     <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 ${bg}`}>
@@ -114,7 +115,14 @@ function formatDate(iso: string | null | undefined) {
   if (!iso) return '—'
   const d = new Date(iso)
   if (isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })
+  return d.toLocaleString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Bangkok',
+  })
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -126,11 +134,26 @@ export default function HistoryPage() {
 
   const [search, setSearch]       = useState('')
   const [riskLevel, setRiskLevel] = useState('')
+  const [status, setStatus]       = useState('')
   const [dateFrom, setDateFrom]   = useState('')
+  const [dateTo, setDateTo]       = useState('')
+  const [sortBy, setSortBy]       = useState('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [page, setPage]           = useState(1)
   const PAGE_SIZE = 10
 
-  const fetchData = useCallback(async (pg: number, opts?: { search?: string; riskLevel?: string; dateFrom?: string }) => {
+  const fetchData = useCallback(async (
+    pg: number,
+    opts?: {
+      search?: string
+      riskLevel?: string
+      status?: string
+      dateFrom?: string
+      dateTo?: string
+      sortBy?: string
+      sortOrder?: 'asc' | 'desc'
+    }
+  ) => {
     setLoading(true)
     setError(null)
     try {
@@ -139,9 +162,11 @@ export default function HistoryPage() {
         pageSize: PAGE_SIZE,
         search:    (opts?.search    ?? search)    || undefined,
         riskLevel: (opts?.riskLevel ?? riskLevel) || undefined,
+        status:    (opts?.status    ?? status)    || undefined,
         dateFrom:  (opts?.dateFrom  ?? dateFrom)  || undefined,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
+        dateTo:    (opts?.dateTo    ?? dateTo)    || undefined,
+        sortBy:    (opts?.sortBy    ?? sortBy)    || undefined,
+        sortOrder: (opts?.sortOrder ?? sortOrder) || undefined,
       })
       setData(result)
     } catch (err: any) {
@@ -152,7 +177,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, riskLevel, dateFrom])
+  }, [search, riskLevel, status, dateFrom, dateTo, sortBy, sortOrder])
 
   // Auto-search (live filtering) with debounce
   useEffect(() => {
@@ -161,11 +186,17 @@ export default function HistoryPage() {
       fetchData(1)
     }, 400)
     return () => clearTimeout(timer)
-  }, [search, riskLevel, dateFrom, fetchData])
+  }, [search, riskLevel, status, dateFrom, dateTo, sortBy, sortOrder, fetchData])
 
   const handleSearch = () => { setPage(1); fetchData(1) }
   const handleClear  = () => {
-    setSearch(''); setRiskLevel(''); setDateFrom('')
+    setSearch('')
+    setRiskLevel('')
+    setStatus('')
+    setDateFrom('')
+    setDateTo('')
+    setSortBy('createdAt')
+    setSortOrder('desc')
     // useEffect will auto-trigger fetchData when these states change
   }
   const handlePageChange = (p: number) => { setPage(p); fetchData(p) }
@@ -216,10 +247,44 @@ export default function HistoryPage() {
                 </select>
               </div>
               <div className="min-w-[160px]">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">วันที่ประเมิน</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">สถานะ</label>
+                <select value={status} onChange={e => setStatus(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all appearance-none">
+                  <option value="">ทั้งหมด</option>
+                  <option value="DRAFT">DRAFT</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="RE_EVALUATED">RE_EVALUATED</option>
+                </select>
+              </div>
+              <div className="min-w-[160px]">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">วันที่เริ่มต้น</label>
                 <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all"
                 />
+              </div>
+              <div className="min-w-[160px]">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">วันที่สิ้นสุด</label>
+                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all"
+                />
+              </div>
+              <div className="min-w-[180px]">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Sort By</label>
+                <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all appearance-none">
+                  <option value="createdAt">createdAt</option>
+                  <option value="submittedAt">submittedAt</option>
+                  <option value="score">score</option>
+                </select>
+              </div>
+              <div className="min-w-[140px]">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Sort Order</label>
+                <select value={sortOrder} onChange={e => setSortOrder(e.target.value as 'asc' | 'desc')}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all appearance-none">
+                  <option value="desc">desc</option>
+                  <option value="asc">asc</option>
+                </select>
               </div>
               <div className="flex gap-2 pb-0.5">
                 <Button variant="secondary" icon="filter_list" onClick={handleSearch}>ค้นหา</Button>
@@ -290,7 +355,7 @@ export default function HistoryPage() {
                             </div>
                           </td>
                           <td className="px-5 py-4 text-[13px] text-slate-500 whitespace-nowrap">
-                            {formatDate(item.submittedAt || item.submittedAt)}
+                            {formatDate(item.submittedAt || item.createdAt)}
                           </td>
                           <td className="px-5 py-4">
                             <ScoreText score={item.score} level={item.riskLevel} />

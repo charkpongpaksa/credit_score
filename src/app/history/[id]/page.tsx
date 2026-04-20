@@ -9,6 +9,7 @@ import {
   getAssessmentDetail,
   getAssessmentRiskFactors,
   getAssessmentRecommendations,
+  getAssessmentResult,
 } from '@/services/assessment'
 import {
   AssessmentDetail,
@@ -87,8 +88,8 @@ function InfoRow({ label, value, accent }: { label: string; value: React.ReactNo
 }
 
 // ─── Score Ring ───────────────────────────────────────────────────────────────
-function ScoreRing({ creditScore, score, riskLevel, primaryReason, recommendationType }: {
-  creditScore: number; score: number; riskLevel: RiskLevel; primaryReason: string; recommendationType: string
+function ScoreRing({ creditScore, score, riskLevel, primaryReason, recommendationType, defaultProbability }: {
+  creditScore: number; score: number; riskLevel: RiskLevel; primaryReason: string; recommendationType: string; defaultProbability?: number
 }) {
   const pct100 = Math.min(Math.max(score, 0), 100)
   const R = 54, SW = 10, C = R + SW
@@ -133,6 +134,15 @@ function ScoreRing({ creditScore, score, riskLevel, primaryReason, recommendatio
           <p className="text-[13px] text-slate-600 leading-relaxed">{primaryReason}</p>
         </div>
       )}
+      {defaultProbability !== undefined && defaultProbability !== null && (
+        <div className="w-full bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">Model ML</p>
+          <p className="text-[12px] text-slate-600">
+            defaultProbability:
+            <span className="ml-1 font-mono font-semibold text-slate-800">{defaultProbability.toFixed(6)}</span>
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -169,6 +179,7 @@ function RecommCard({ r }: { r: Recommendation }) {
     APPROVE: { icon: 'check_circle', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
     REJECT:  { icon: 'cancel',       bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-700'     },
     REVIEW:  { icon: 'warning',      bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700'   },
+    REVIEW_MANUAL: { icon: 'warning', bg: 'bg-amber-50',  border: 'border-amber-200',   text: 'text-amber-700'   },
     INFO:    { icon: 'info',         bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-700'    },
   }
   const c = cfg[r.type] || cfg.INFO
@@ -204,7 +215,32 @@ export default function AssessmentDetailPage() {
       try {
         // Load detail first (required), then risk-factors + recommendations in parallel (optional)
         const det = await getAssessmentDetail(id)
-        setDetail(det)
+        let nextDetail = det
+
+        // บางเคส detail อาจยังไม่มี result object; fallback ด้วย /result เพื่อให้การ์ดคะแนนแสดงแน่นอน
+        if (!det?.result) {
+          try {
+            const result = await getAssessmentResult(id)
+            nextDetail = {
+              ...det,
+              result: {
+                resultId: result.resultId,
+                score: result.score,
+                creditScore: result.creditScore,
+                scoreGrade: result.scoreGrade,
+                defaultProbability: result.defaultProbability,
+                riskLevel: result.riskLevel,
+                recommendationType: result.recommendationType,
+                primaryReason: result.primaryReason,
+                createdAt: result.createdAt || '',
+              },
+            }
+          } catch {
+            nextDetail = det
+          }
+        }
+
+        setDetail(nextDetail)
 
         const [fac, rec] = await Promise.allSettled([
           getAssessmentRiskFactors(id),
@@ -255,7 +291,7 @@ export default function AssessmentDetailPage() {
   }
 
   const { assessment, applicantProfile: p, employmentInfo: emp, financialInfo: fin, debtInfos, result } = detail
-  const fullName = `${p.firstName} ${p.lastName}`
+  const fullName = p?.firstName ? `${p.firstName} ${p.lastName}` : `ลูกค้า ${assessment.assessmentNo}`
 
   return (
     <div className="flex min-h-screen bg-app-bg">
@@ -289,17 +325,17 @@ export default function AssessmentDetailPage() {
               {/* Customer Info */}
               <Section icon="person" title="ข้อมูลลูกค้า">
                 <div className="grid grid-cols-2 gap-x-8">
-                  <InfoRow label="สถานภาพ" value={MARITAL[p.maritalStatus] || p.maritalStatus} />
-                  <InfoRow label="อายุ" value={`${p.ageYears || '—'} ปี`} />
-                  <InfoRow label="ประเภทการจ้างงาน" value={EMP_TYPE[emp.employmentType] || emp.employmentType} />
-                  <InfoRow label="อายุงาน" value={tenure(emp.jobTenureMonths)} />
-                  {emp.employerName && <InfoRow label="สถานที่ทำงาน" value={emp.employerName} />}
+                  <InfoRow label="สถานภาพ" value={p?.maritalStatus ? MARITAL[p.maritalStatus] || p.maritalStatus : '—'} />
+                  <InfoRow label="อายุ" value={p?.ageYears ? `${p.ageYears} ปี` : '—'} />
+                  <InfoRow label="ประเภทการจ้างงาน" value={emp?.employmentType ? EMP_TYPE[emp.employmentType] || emp.employmentType : '—'} />
+                  <InfoRow label="อายุงาน" value={emp?.jobTenureMonths ? tenure(emp.jobTenureMonths) : '—'} />
+                  {emp?.employerName && <InfoRow label="สถานที่ทำงาน" value={emp.employerName} />}
                 </div>
-                {(p.district || p.provinceCode) && (
+                {(p?.district || p?.provinceCode) && (
                   <div className="mt-4 pt-4 border-t border-slate-100">
                     <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1">ที่อยู่ปัจจุบัน</p>
                     <p className="text-[14px] text-slate-700">
-                      {[p.district, `จังหวัด ${p.provinceCode}`, p.postalCode].filter(Boolean).join(' ')}
+                      {[p.district, p.provinceCode ? `จังหวัด ${p.provinceCode}` : null, p.postalCode].filter(Boolean).join(' ')}
                     </p>
                   </div>
                 )}
@@ -310,19 +346,19 @@ export default function AssessmentDetailPage() {
                 <div className="grid grid-cols-2 gap-4 mb-5">
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                     <p className="text-[11px] text-slate-500 font-semibold mb-1">รายได้ต่อเดือน</p>
-                    <p className="text-[20px] font-bold text-brand">{money(emp.monthlyIncome)}</p>
+                    <p className="text-[20px] font-bold text-brand">{money(emp?.monthlyIncome || 0)}</p>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                     <p className="text-[11px] text-slate-500 font-semibold mb-1">ภาระหนี้รายเดือน</p>
-                    <p className="text-[20px] font-bold text-slate-700">{money(fin.monthlyDebtPayment)}</p>
+                    <p className="text-[20px] font-bold text-slate-700">{money(fin?.monthlyDebtPayment || 0)}</p>
                   </div>
                 </div>
-                <InfoRow label="DSR (Debt Service Ratio)" value={pct(fin.debtServiceRatio)} />
-                <InfoRow label="วงเงินที่ขอสินเชื่อ" value={money(fin.requestedLoanAmount)} accent />
-                <InfoRow label="ระยะเวลาผ่อนชำระ" value={`${fin.loanTermMonths} เดือน`} />
-                <InfoRow label="วัตถุประสงค์สินเชื่อ" value={LOAN_PURPOSE[fin.loanPurposeCode] || fin.loanPurposeCode} />
-                {fin.netMonthlyIncome && <InfoRow label="รายได้สุทธิต่อเดือน (หลังหักหนี้)" value={money(fin.netMonthlyIncome)} />}
-                {emp.additionalIncome > 0 && <InfoRow label="รายได้เสริม" value={money(emp.additionalIncome)} />}
+                <InfoRow label="DSR (Debt Service Ratio)" value={pct(fin?.debtServiceRatio || 0)} />
+                <InfoRow label="วงเงินที่ขอสินเชื่อ" value={money(fin?.requestedLoanAmount || 0)} accent />
+                <InfoRow label="ระยะเวลาผ่อนชำระ" value={`${fin?.loanTermMonths || 0} เดือน`} />
+                <InfoRow label="วัตถุประสงค์สินเชื่อ" value={fin?.loanPurposeCode ? (LOAN_PURPOSE[fin.loanPurposeCode] || fin.loanPurposeCode) : '—'} />
+                {fin?.netMonthlyIncome && <InfoRow label="รายได้สุทธิต่อเดือน (หลังหักหนี้)" value={money(fin.netMonthlyIncome)} />}
+                {emp?.additionalIncome && emp.additionalIncome > 0 && <InfoRow label="รายได้เสริม" value={money(emp.additionalIncome)} />}
               </Section>
 
               {/* Debt Infos */}
@@ -359,6 +395,7 @@ export default function AssessmentDetailPage() {
                   riskLevel={result.riskLevel}
                   primaryReason={result.primaryReason}
                   recommendationType={result.recommendationType}
+                  defaultProbability={result.defaultProbability}
                 />
               ) : (
                 <div className="bg-white rounded-2xl p-6 shadow-card border border-slate-100 flex flex-col items-center gap-3 text-slate-400">

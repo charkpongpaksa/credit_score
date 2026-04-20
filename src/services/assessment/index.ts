@@ -1,13 +1,16 @@
 import axiosInstance from '../axios'
+import { extractApiData } from '../axios'
 import {
   AssessmentList,
   AssessmentResult,
   RiskFactors,
   Recommendations,
   AssessmentDetail,
+  AssessmentCreatePayload,
+  AssessmentCreateResponse,
+  AssessmentFormOptions,
+  AssessmentEvaluationData,
 } from '../../types/assessment'
-
-type ApiWrap<T> = { success: boolean; message: string; data: T }
 
 // GET /api/v1/assessments
 export async function getAssessmentList(params?: {
@@ -33,40 +36,72 @@ export async function getAssessmentList(params?: {
   if (params?.sortOrder)  query.set('sortOrder',  params.sortOrder)
 
   const qs = query.toString()
-  const response = await axiosInstance.get<ApiWrap<AssessmentList>>(
+  const response = await axiosInstance.get(
     `/api/v1/assessments${qs ? `?${qs}` : ''}`
   )
-  return response.data.data
+  return extractApiData<AssessmentList>(response.data)
+}
+
+// GET /api/v1/assessments/form-options
+export async function getAssessmentFormOptions(): Promise<AssessmentFormOptions> {
+  const response = await axiosInstance.get('/api/v1/assessments/form-options')
+  return extractApiData<AssessmentFormOptions>(response.data)
 }
 
 // GET /api/v1/assessments/{id}/detail
 export async function getAssessmentDetail(id: string): Promise<AssessmentDetail> {
-  const response = await axiosInstance.get<ApiWrap<AssessmentDetail>>(
+  const response = await axiosInstance.get(
     `/api/v1/assessments/${id}/detail`
   )
-  return response.data.data
+  return extractApiData<AssessmentDetail>(response.data)
 }
 
 // GET /api/v1/assessments/{id}/result
 export async function getAssessmentResult(id: string): Promise<AssessmentResult> {
-  const response = await axiosInstance.get<ApiWrap<AssessmentResult>>(
+  const response = await axiosInstance.get(
     `/api/v1/assessments/${id}/result`
   )
-  return response.data.data
+  return extractApiData<AssessmentResult>(response.data)
 }
 
 // GET /api/v1/assessments/{id}/risk-factors
 export async function getAssessmentRiskFactors(id: string): Promise<RiskFactors> {
-  const response = await axiosInstance.get<ApiWrap<RiskFactors>>(
+  const response = await axiosInstance.get(
     `/api/v1/assessments/${id}/risk-factors`
   )
-  return response.data.data
+  return extractApiData<RiskFactors>(response.data)
 }
 
 // GET /api/v1/assessments/{id}/recommendations
 export async function getAssessmentRecommendations(id: string): Promise<Recommendations> {
-  const response = await axiosInstance.get<ApiWrap<Recommendations>>(
+  const response = await axiosInstance.get(
     `/api/v1/assessments/${id}/recommendations`
   )
-  return response.data.data
+  return extractApiData<Recommendations>(response.data)
+}
+
+// POST /api/v1/assessments
+export async function createAssessment(payload: AssessmentCreatePayload): Promise<AssessmentCreateResponse> {
+  const response = await axiosInstance.post('/api/v1/assessments', payload)
+  return extractApiData<AssessmentCreateResponse>(response.data)
+}
+
+// PUT /api/v1/assessments/{id}
+export async function updateAssessment(id: string, payload: AssessmentCreatePayload): Promise<void> {
+  await axiosInstance.put(`/api/v1/assessments/${id}`, payload)
+}
+
+// POST /api/v1/assessments/calculate
+export async function calculateAssessmentPreview(payload: AssessmentCreatePayload): Promise<AssessmentEvaluationData> {
+  const response = await axiosInstance.post('/api/v1/assessments/calculate', payload)
+  return extractApiData<AssessmentEvaluationData>(response.data)
+}
+
+// POST /api/v1/assessments/{id}/submit
+export async function submitAssessment(
+  id: string,
+  payload?: AssessmentCreatePayload
+): Promise<AssessmentEvaluationData> {
+  const response = await axiosInstance.post(`/api/v1/assessments/${id}/submit`, payload ?? {})
+  return extractApiData<AssessmentEvaluationData>(response.data)
 }

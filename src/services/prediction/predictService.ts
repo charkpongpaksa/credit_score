@@ -1,4 +1,5 @@
 import axiosInstance from '../axios'
+import { extractApiData } from '../axios'
 import { PredictRequest, PredictResponse } from '../../types/prediction'
 
 /**
@@ -8,6 +9,15 @@ import { PredictRequest, PredictResponse } from '../../types/prediction'
 export const predictService = async (
   payload: PredictRequest
 ): Promise<PredictResponse> => {
-  const response = await axiosInstance.post('/predict', payload)
-  return response.data
+  try {
+    const response = await axiosInstance.post('/api/v1/predict', payload)
+    return extractApiData<PredictResponse>(response.data)
+  } catch (error: any) {
+    // Backward compatible fallback for legacy route.
+    if (error?.response?.status === 404) {
+      const legacyResponse = await axiosInstance.post('/predict', payload)
+      return extractApiData<PredictResponse>(legacyResponse.data)
+    }
+    throw error
+  }
 }

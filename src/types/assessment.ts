@@ -2,7 +2,120 @@
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'
 export type AssessmentStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'RE_EVALUATED' | 'CANCELLED'
-export type RecommendationType = 'APPROVE' | 'REJECT' | 'REVIEW' | 'INFO'
+export type RecommendationType = 'APPROVE' | 'REJECT' | 'REVIEW' | 'REVIEW_MANUAL' | 'INFO'
+
+export interface AssessmentCreatePayload {
+  applicantProfile: {
+    firstName: string
+    lastName: string
+    nationalIdHash?: string
+    dateOfBirth: string
+    maritalStatus?: string
+    provinceCode: string
+    district?: string
+    postalCode?: string
+    gender?: string
+    [key: string]: unknown
+  }
+  employmentInfo: {
+    occupationCode: string
+    employmentType: string
+    employerName?: string
+    jobTenureMonths: number
+    monthlyIncome: number
+    additionalIncome: number
+    [key: string]: unknown
+  }
+  financialInfo: {
+    requestedLoanAmount: number
+    loanTermMonths: number
+    loanPurposeCode: string
+    monthlyDebtPayment: number
+    existingLoanBalance: number
+    [key: string]: unknown
+  }
+  debtInfos: Array<{
+    debtType: string
+    creditorName?: string
+    outstandingAmount: number
+    monthlyPayment: number
+    delinquentDays: number
+    isDefaulted: boolean
+    [key: string]: unknown
+  }>
+  contactInfo?: {
+    phoneNumber?: string
+    email?: string
+    address?: string
+    [key: string]: unknown
+  }
+  documentInfos?: Array<{
+    documentType: string
+    documentNumber?: string
+    issueDate?: string
+    expiryDate?: string
+    [key: string]: unknown
+  }>
+  modelFeatures?: Record<string, unknown>
+  note?: string
+  [key: string]: unknown
+}
+
+export interface AssessmentCreateResponse {
+  assessmentId: string
+  assessmentNo?: string
+  status?: AssessmentStatus
+}
+
+export interface AssessmentFormOptions {
+  [key: string]: unknown
+}
+
+// ── 0) Unified Evaluation Payload (calculate / submit / re-evaluate) ───────
+export interface ScoreBreakdownItem {
+  code?: string;
+  label?: string; // ภาษาไทยหรืออังกฤษ
+  labelTh?: string;
+  labelEn?: string;
+  score?: number;
+  value?: number;
+  scoreDelta?: number;
+  reason?: string;
+  impact?: number;
+  detail?: string;
+  [key: string]: unknown;
+}
+
+export interface AssessmentEvaluationData {
+  assessmentId?: string;
+  resultId?: string;
+  score?: number;
+  scoreScale?: number;
+  creditScore?: number;
+  scoreGrade?: string;
+  defaultProbability?: number;
+  riskLevel?: RiskLevel | string;
+  riskLevelLabel?: string;
+  dti?: number;
+  recommendationType?: RecommendationType | string;
+  recommendationLabel?: string;
+  primaryReason?: string;
+  scoreBreakdown?: ScoreBreakdownItem[];
+  riskFactors?: RiskFactor[];
+  recommendations?: Recommendation[];
+  inputSnapshot?: InputSnapshot;
+  savedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface InputSnapshot {
+  monthlyIncome?: number;
+  monthlyDebtPayment?: number;
+  occupation?: string;
+  province?: string;
+  modelPayload?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 // ── 1) List / Pagination ──────────────────────────────────────────────────────
 export interface AssessmentListItem {
@@ -10,6 +123,7 @@ export interface AssessmentListItem {
   assessmentNo: string
   applicantName: string
   status: AssessmentStatus
+  createdAt?: string | null
   submittedAt: string | null
   score: number | null
   riskLevel: RiskLevel | null
@@ -117,16 +231,17 @@ export interface AssessmentResult {
   defaultProbability: number
   recommendationType: RecommendationType
   primaryReason: string
-  createdAt: string
+  createdAt?: string
 }
 
 // ── 4) Risk Factors ───────────────────────────────────────────────────────────
 export interface RiskFactor {
-  code: string
-  labelTh: string
-  impactDirection: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL'
-  impactScore: number
-  detail: string
+  code: string;
+  labelTh?: string;
+  labelEn?: string;
+  impactDirection: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
+  impactScore: number;
+  detail?: string;
 }
 
 export interface RiskFactors {
@@ -137,11 +252,14 @@ export interface RiskFactors {
 
 // ── 5) Recommendations ────────────────────────────────────────────────────────
 export interface Recommendation {
-  type: RecommendationType
-  titleTh: string
-  descriptionTh: string
-  priority: number
-  isPrimary: boolean
+  type: RecommendationType;
+  titleTh: string;
+  descriptionTh: string;
+  priority: number;
+  isPrimary: boolean;
+  // เพิ่มภาษาอังกฤษหากต้องการ
+  titleEn?: string;
+  descriptionEn?: string;
 }
 
 export interface Recommendations {
