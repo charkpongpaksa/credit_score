@@ -210,85 +210,119 @@ const TRANS = {
   } as Record<string, string>,
 }
 
-// ─── Risk Presets ─────────────────────────────────────────────────────────────
-const RISK_PRESETS: Record<'LOW' | 'MEDIUM' | 'HIGH', Partial<ComprehensiveForm>> = {
-  LOW: {
-    title: 'นางสาว', firstName: 'Test', lastName: 'LowRisk',
-    province: 'กรุงเทพมหานคร', district: 'บางกะปิ', postalCode: '10240',
-    employerName: 'Stable Co.,Ltd.', extraIncome: 10000,
-    existingLoanBalance: 0, monthlyDebtPayment: 15000,
-    debtInfos: [{ debtType: 'CREDIT_CARD', creditorName: 'Bank A', outstandingAmount: 20000, monthlyPayment: 2000, delinquentDays: 0, isDefaulted: false }],
-    occupationCode: 'OFFICER', employmentType: 'FULL_TIME',
-    loanPurposeCode: 'HOME_PURCHASE', provinceCode: '10',
-    "เพศ": 'F', "มีรถยนต์": 'N', "มีอสังหาริมทรัพย์": 'Y',
-    "รายได้รวม": 90000, "วงเงินสินเชื่อ": 600000, "ค่างวดรายงวด": 15000,
-    "ราคาสินค้า": 600000, "สถานภาพครอบครัว": 'Married',
-    "ประเภทที่อยู่อาศัย": 'House / apartment',
-    "อายุวันเกิด": -12600, "อายุงานวัน": -2555,
-  },
-  MEDIUM: {
-    title: 'นาย', firstName: 'Test', lastName: 'MediumRisk',
-    province: 'ชลบุรี', district: 'เมือง', postalCode: '20000',
-    employerName: 'Company B', extraIncome: 0,
-    existingLoanBalance: 100000, monthlyDebtPayment: 9000,
-    debtInfos: [{ debtType: 'PERSONAL_LOAN', creditorName: 'Bank B', outstandingAmount: 100000, monthlyPayment: 9000, delinquentDays: 0, isDefaulted: false }],
-    occupationCode: 'OFFICER', employmentType: 'CONTRACT',
-    loanPurposeCode: 'HOME_PURCHASE', provinceCode: '20',
-    "เพศ": 'M', "มีรถยนต์": 'N', "มีอสังหาริมทรัพย์": 'N',
-    "รายได้รวม": 14000, "วงเงินสินเชื่อ": 300000, "ค่างวดรายงวด": 9000,
-    "ราคาสินค้า": 300000, "สถานภาพครอบครัว": 'Single / not married',
-    "ประเภทที่อยู่อาศัย": 'Rented apartment',
-    "อายุวันเกิด": -12750, "อายุงานวัน": -182,
-  },
-  HIGH: {
-    title: 'นาย', firstName: 'Test', lastName: 'HighRisk',
-    province: 'กรุงเทพมหานคร', district: 'บางกะปิ', postalCode: '10240',
-    employerName: 'Temporary', extraIncome: 0,
-    existingLoanBalance: 300000, monthlyDebtPayment: 9000,
-    debtInfos: [{ debtType: 'PERSONAL_LOAN', creditorName: 'Bank X', outstandingAmount: 300000, monthlyPayment: 9000, delinquentDays: 90, isDefaulted: true }],
-    occupationCode: 'OFFICER', employmentType: 'CONTRACT',
-    loanPurposeCode: 'HOME_PURCHASE', provinceCode: '10',
-    "เพศ": 'M', "มีรถยนต์": 'N', "มีอสังหาริมทรัพย์": 'N',
-    "ประเภทที่อยู่อาศัย": 'Rented apartment',
-    "รายได้รวม": 12000, "วงเงินสินเชื่อ": 800000, "ค่างวดรายงวด": 9000,
-    "ราคาสินค้า": 800000, "ประเภทสินเชื่อ": 'Cash loans',
-    "ประเภทอาชีพรายได้": 'Unemployed', "สถานภาพครอบครัว": 'Single / not married',
-    "อายุวันเกิด": -6900, "อายุงานวัน": -182,
-    "จำนวนบุตร": 2, "จำนวนสมาชิกครอบครัว": 4,
-    "คะแนนภายนอก2": 0.01, "คะแนนภายนอก3": 0.01,
-    NAME_FAMILY_STATUS: 'Single / not married', NAME_HOUSING_TYPE: 'Rented apartment',
-    NAME_INCOME_TYPE: 'Unemployed', ORGANIZATION_TYPE: 'XNA',
-    AMT_GOODS_PRICE: 800000, WEEKDAY_APPR_PROCESS_START: 'MONDAY', HOUR_APPR_PROCESS_START: 9,
-    CNT_CHILDREN: 2, CNT_FAM_MEMBERS: 4,
-    REGION_RATING_CLIENT: 3, REGION_RATING_CLIENT_W_CITY: 3,
-    OBS_30_CNT_SOCIAL_CIRCLE: 5, DEF_30_CNT_SOCIAL_CIRCLE: 2,
-    OBS_60_CNT_SOCIAL_CIRCLE: 5, DEF_60_CNT_SOCIAL_CIRCLE: 2,
-    AMT_REQ_CREDIT_BUREAU_MON: 3, AMT_REQ_CREDIT_BUREAU_YEAR: 10, DAYS_LAST_PHONE_CHANGE: -50,
-  },
+// ─── API Test Presets ─────────────────────────────────────────────────────────
+const API_TEST_LOW_FORM: Partial<ComprehensiveForm> = {
+  title: 'นาย', firstName: 'Test', lastName: 'LowRisk',
+  idCard: '', phone: '', email: '', addressLine: '',
+  province: 'กรุงเทพมหานคร', district: 'บางกะปิ', subDistrict: '', postalCode: '10240',
+  employerName: 'Stable Co.,Ltd.', extraIncome: 10000,
+  existingLoanBalance: 0, monthlyDebtPayment: 15000,
+  debtInfos: [{ debtType: 'CREDIT_CARD', creditorName: 'Bank A', outstandingAmount: 20000, monthlyPayment: 2000, delinquentDays: 0, isDefaulted: false }],
+  occupationCode: 'OFFICER', employmentType: 'FULL_TIME',
+  loanPurposeCode: 'HOME_PURCHASE', provinceCode: '10',
+  "เพศ": 'M', "มีรถยนต์": 'N', "มีอสังหาริมทรัพย์": 'Y',
+  "รายได้รวม": 90000, "วงเงินสินเชื่อ": 600000, "ค่างวดรายงวด": 15000,
+  "ราคาสินค้า": 600000, "ประเภทสินเชื่อ": 'Cash loans',
+  "ประเภทอาชีพรายได้": 'Working', "ระดับการศึกษา": 'Higher education',
+  "สถานภาพครอบครัว": 'Married', "ประเภทที่อยู่อาศัย": 'House / apartment',
+  "อายุวันเกิด": -12600, "อายุงานวัน": -2555,
+  "จำนวนบุตร": 1, "จำนวนสมาชิกครอบครัว": 3,
+  "คะแนนภายนอก2": 0.79, "คะแนนภายนอก3": 0.65,
+  applicantExtrasJson: JSON.stringify({
+    CODE_GENDER: 'M',
+    FLAG_OWN_CAR: 'N',
+    FLAG_OWN_REALTY: 'Y',
+    NAME_FAMILY_STATUS: 'Married',
+    NAME_HOUSING_TYPE: 'House / apartment',
+  }, null, 2),
+  employmentExtrasJson: JSON.stringify({
+    NAME_INCOME_TYPE: 'Working',
+    ORGANIZATION_TYPE: 'Business Entity Type 3',
+  }, null, 2),
+  financialExtrasJson: JSON.stringify({
+    NAME_CONTRACT_TYPE: 'Cash loans',
+    AMT_CREDIT: 600000,
+    AMT_ANNUITY: 15000,
+    AMT_GOODS_PRICE: 600000,
+    WEEKDAY_APPR_PROCESS_START: 'WEDNESDAY',
+    HOUR_APPR_PROCESS_START: 10,
+  }, null, 2),
+  modelFeaturesJson: JSON.stringify({
+    EXT_SOURCE_1: 0.72,
+    EXT_SOURCE_2: 0.79,
+    EXT_SOURCE_3: 0.65,
+    DAYS_BIRTH: -12600,
+    DAYS_EMPLOYED: -2555,
+    CNT_CHILDREN: 1,
+    CNT_FAM_MEMBERS: 3,
+    REGION_RATING_CLIENT: 2,
+    REGION_RATING_CLIENT_W_CITY: 2,
+    OBS_30_CNT_SOCIAL_CIRCLE: 0,
+    DEF_30_CNT_SOCIAL_CIRCLE: 0,
+    OBS_60_CNT_SOCIAL_CIRCLE: 0,
+    DEF_60_CNT_SOCIAL_CIRCLE: 0,
+    AMT_REQ_CREDIT_BUREAU_MON: 0,
+    AMT_REQ_CREDIT_BUREAU_YEAR: 0,
+    DAYS_LAST_PHONE_CHANGE: -1200,
+  }, null, 2),
 }
 
-// ─── API Test Presets ─────────────────────────────────────────────────────────
 const API_TEST_MEDIUM_FORM: Partial<ComprehensiveForm> = {
   title: 'นาย', firstName: 'Test', lastName: 'MediumRisk',
   idCard: '', phone: '', email: '', addressLine: '',
-  province: 'ชลบุรี', district: 'เมือง', subDistrict: '', postalCode: '20000',
+  province: 'กรุงเทพมหานคร', district: 'ห้วยขวาง', subDistrict: '', postalCode: '10310',
   employerName: 'Company B', extraIncome: 0,
-  existingLoanBalance: 100000, monthlyDebtPayment: 9000,
-  debtInfos: [{ debtType: 'PERSONAL_LOAN', creditorName: 'Bank B', outstandingAmount: 100000, monthlyPayment: 9000, delinquentDays: 0, isDefaulted: false }],
+  existingLoanBalance: 120000, monthlyDebtPayment: 10000,
+  debtInfos: [{ debtType: 'PERSONAL_LOAN', creditorName: 'Bank B', outstandingAmount: 120000, monthlyPayment: 6000, delinquentDays: 0, isDefaulted: false }],
   occupationCode: 'OFFICER', employmentType: 'CONTRACT',
-  loanPurposeCode: 'HOME_PURCHASE', provinceCode: '20',
-  "เพศ": 'M', "มีรถยนต์": 'N', "มีอสังหาริมทรัพย์": 'N',
-  "รายได้รวม": 14000, "วงเงินสินเชื่อ": 300000, "ค่างวดรายงวด": 9000,
-  "ราคาสินค้า": 300000, "ประเภทสินเชื่อ": 'Cash loans',
+  loanPurposeCode: 'HOME_PURCHASE', provinceCode: '10', loanTermMonths: 48,
+  "เพศ": 'M', "มีรถยนต์": 'N', "มีอสังหาริมทรัพย์": 'Y',
+  "รายได้รวม": 18000, "วงเงินสินเชื่อ": 350000, "ค่างวดรายงวด": 10000,
+  "ราคาสินค้า": 350000, "ประเภทสินเชื่อ": 'Cash loans',
   "ประเภทอาชีพรายได้": 'Working', "ระดับการศึกษา": 'Higher education',
-  "สถานภาพครอบครัว": 'Single / not married', "ประเภทที่อยู่อาศัย": 'House / apartment',
-  "อายุวันเกิด": -12742, "อายุงานวัน": -180,
+  "สถานภาพครอบครัว": 'Single / not married', "ประเภทที่อยู่อาศัย": 'Rented apartment',
+  "อายุวันเกิด": -12000, "อายุงานวัน": -300,
   "จำนวนบุตร": 0, "จำนวนสมาชิกครอบครัว": 2,
-  "คะแนนภายนอก2": 0.61, "คะแนนภายนอก3": 0.47,
-  applicantExtrasJson: JSON.stringify({ CODE_GENDER: 'M', FLAG_OWN_CAR: 'N', FLAG_OWN_REALTY: 'N', NAME_FAMILY_STATUS: 'Single / not married', NAME_HOUSING_TYPE: 'Rented apartment' }, null, 2),
-  employmentExtrasJson: JSON.stringify({ NAME_INCOME_TYPE: 'Unemployed', ORGANIZATION_TYPE: 'XNA' }, null, 2),
-  financialExtrasJson: JSON.stringify({ NAME_CONTRACT_TYPE: 'Cash loans', AMT_CREDIT: 300000, AMT_ANNUITY: 9000, AMT_GOODS_PRICE: 300000, WEEKDAY_APPR_PROCESS_START: 'MONDAY', HOUR_APPR_PROCESS_START: 9 }, null, 2),
-  modelFeaturesJson: JSON.stringify({ EXT_SOURCE_2: 0.61, EXT_SOURCE_3: 0.47, DAYS_BIRTH: -12742, DAYS_EMPLOYED: -180, AMT_INCOME_TOTAL: 14000, AMT_CREDIT: 300000, AMT_ANNUITY: 9000, AMT_GOODS_PRICE: 300000 }, null, 2),
+  "คะแนนภายนอก1": 0.25, "คะแนนภายนอก2": 0.25, "คะแนนภายนอก3": 0.25,
+  applicantExtrasJson: JSON.stringify({
+    nationality: 'TH',
+    CODE_GENDER: 'M',
+    FLAG_OWN_CAR: 'N',
+    FLAG_OWN_REALTY: 'Y',
+    NAME_FAMILY_STATUS: 'Single / not married',
+    NAME_HOUSING_TYPE: 'Rented apartment',
+  }, null, 2),
+  employmentExtrasJson: JSON.stringify({
+    NAME_INCOME_TYPE: 'Working',
+  }, null, 2),
+  financialExtrasJson: JSON.stringify({
+    NAME_CONTRACT_TYPE: 'Cash loans',
+    AMT_CREDIT: 350000,
+    AMT_ANNUITY: 10000,
+    AMT_GOODS_PRICE: 350000,
+  }, null, 2),
+  modelFeaturesJson: JSON.stringify({
+    NAME_CONTRACT_TYPE: 'Cash loans',
+    CODE_GENDER: 'M',
+    FLAG_OWN_CAR: 'N',
+    FLAG_OWN_REALTY: 'Y',
+    NAME_INCOME_TYPE: 'Working',
+    NAME_FAMILY_STATUS: 'Single / not married',
+    NAME_HOUSING_TYPE: 'Rented apartment',
+    AMT_INCOME_TOTAL: 18000,
+    AMT_CREDIT: 350000,
+    AMT_ANNUITY: 10000,
+    AMT_GOODS_PRICE: 350000,
+    EXT_SOURCE_1: 0.25,
+    EXT_SOURCE_2: 0.25,
+    EXT_SOURCE_3: 0.25,
+    DAYS_BIRTH: -12000,
+    DAYS_EMPLOYED: -300,
+    OBS_30_CNT_SOCIAL_CIRCLE: 2,
+    DEF_30_CNT_SOCIAL_CIRCLE: 0,
+    AMT_REQ_CREDIT_BUREAU_MON: 1,
+    AMT_REQ_CREDIT_BUREAU_YEAR: 2,
+  }, null, 2),
 }
 
 // ─── API Test HIGH Risk (ตรงกับ JSON note: "case-high") ──────────────────────
@@ -308,7 +342,7 @@ const API_TEST_HIGH_FORM: Partial<ComprehensiveForm> = {
   "ประเภทอาชีพรายได้": 'Unemployed', "สถานภาพครอบครัว": 'Single / not married',
   "อายุวันเกิด": -6900, "อายุงานวัน": -182,
   "จำนวนบุตร": 2, "จำนวนสมาชิกครอบครัว": 4,
-  "คะแนนภายนอก1": 0, "คะแนนภายนอก2": 0.01, "คะแนนภายนอก3": 0.01,
+  "คะแนนภายนอก1": 0.01, "คะแนนภายนอก2": 0.01, "คะแนนภายนอก3": 0.01,
   NAME_FAMILY_STATUS: 'Single / not married', NAME_HOUSING_TYPE: 'Rented apartment',
   NAME_INCOME_TYPE: 'Unemployed', ORGANIZATION_TYPE: 'XNA',
   AMT_GOODS_PRICE: 800000, WEEKDAY_APPR_PROCESS_START: 'MONDAY', HOUR_APPR_PROCESS_START: 9,
@@ -321,7 +355,7 @@ const API_TEST_HIGH_FORM: Partial<ComprehensiveForm> = {
   employmentExtrasJson: JSON.stringify({ NAME_INCOME_TYPE: 'Unemployed', ORGANIZATION_TYPE: 'XNA' }, null, 2),
   financialExtrasJson: JSON.stringify({ NAME_CONTRACT_TYPE: 'Cash loans', AMT_CREDIT: 800000, AMT_ANNUITY: 9000, AMT_GOODS_PRICE: 800000, WEEKDAY_APPR_PROCESS_START: 'MONDAY', HOUR_APPR_PROCESS_START: 9 }, null, 2),
   modelFeaturesJson: JSON.stringify({
-    EXT_SOURCE_2: 0.01, EXT_SOURCE_3: 0.01,
+    EXT_SOURCE_1: 0.01, EXT_SOURCE_2: 0.01, EXT_SOURCE_3: 0.01,
     DAYS_BIRTH: -6900, DAYS_EMPLOYED: -182,
     CNT_CHILDREN: 2, CNT_FAM_MEMBERS: 4,
     REGION_RATING_CLIENT: 3, REGION_RATING_CLIENT_W_CITY: 3,
@@ -563,9 +597,9 @@ function buildAssessmentPayload(form: ComprehensiveForm): AssessmentCreatePayloa
       address: form.addressLine || undefined,
     },
     modelFeatures: {
-      EXT_SOURCE_1: form["คะแนนภายนอก1"] || 0,
-      EXT_SOURCE_2: form["คะแนนภายนอก2"] || 0,
-      EXT_SOURCE_3: form["คะแนนภายนอก3"] || 0,
+      EXT_SOURCE_1: form["คะแนนภายนอก1"] ?? 0,
+      EXT_SOURCE_2: form["คะแนนภายนอก2"] ?? 0,
+      EXT_SOURCE_3: form["คะแนนภายนอก3"] ?? 0,
       NAME_CONTRACT_TYPE: form["ประเภทสินเชื่อ"],
       AMT_CREDIT: form["วงเงินสินเชื่อ"],
       AMT_INCOME_TOTAL: form["รายได้รวม"],
@@ -686,10 +720,6 @@ export default function PredictPage() {
   }, [optionLists, optionsLoading])
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
-  const applyPreset = (level: 'LOW' | 'MEDIUM' | 'HIGH') => {
-    setForm(prev => ({ ...prev, ...RISK_PRESETS[level] }))
-  }
-
   const applyPayloadPreset = (
     preset: Partial<ComprehensiveForm>,
     preferred: { occupationCode?: string[]; loanPurposeCode?: string[]; employmentType?: string[]; provinceCode?: string[] }
@@ -704,7 +734,8 @@ export default function PredictPage() {
     }))
   }
 
-  const applyApiTestMedium = () => applyPayloadPreset(API_TEST_MEDIUM_FORM, { occupationCode: ['OCC05', 'OFFICER'], loanPurposeCode: ['HOME', 'HOME_PURCHASE'], employmentType: ['CONTRACT'], provinceCode: ['20'] })
+  const applyApiTestLow = () => applyPayloadPreset(API_TEST_LOW_FORM, { occupationCode: ['OFFICER'], loanPurposeCode: ['HOME_PURCHASE', 'HOME'], employmentType: ['FULL_TIME'], provinceCode: ['10'] })
+  const applyApiTestMedium = () => applyPayloadPreset(API_TEST_MEDIUM_FORM, { occupationCode: ['OFFICER', 'OCC05'], loanPurposeCode: ['HOME_PURCHASE', 'HOME'], employmentType: ['CONTRACT'], provinceCode: ['10', '20'] })
   const applyApiTestHigh = () => applyPayloadPreset(API_TEST_HIGH_FORM, { occupationCode: ['OFFICER'], loanPurposeCode: ['HOME_PURCHASE', 'HOME'], employmentType: ['CONTRACT'], provinceCode: ['10'] })
 
   const handleCalculate = async () => {
@@ -1039,11 +1070,9 @@ export default function PredictPage() {
       <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
         <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Developer Options</p>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" onClick={() => applyPreset('LOW')} className="!py-1.5 !px-3 text-xs">Preset LOW</Button>
-          <Button variant="secondary" onClick={() => applyPreset('MEDIUM')} className="!py-1.5 !px-3 text-xs">Preset MEDIUM</Button>
-          <Button variant="secondary" onClick={() => applyPreset('HIGH')} className="!py-1.5 !px-3 text-xs">Preset HIGH</Button>
-          <Button variant="secondary" onClick={applyApiTestMedium} className="!py-1.5 !px-3 text-xs">Preset API MediumRisk</Button>
-          <Button variant="secondary" onClick={applyApiTestHigh} className="!py-1.5 !px-3 text-xs !bg-red-50 !text-red-700 !border-red-200">Preset API HighRisk (case-high)</Button>
+          <Button variant="secondary" onClick={applyApiTestLow} className="!py-2 !px-4 text-sm whitespace-nowrap !bg-emerald-50 !text-emerald-700 !border-emerald-200">Preset API LowRisk (case-low)</Button>
+          <Button variant="secondary" onClick={applyApiTestMedium} className="!py-2 !px-4 text-sm whitespace-nowrap !bg-amber-50 !text-amber-700 !border-amber-200">Preset API MediumRisk (case-medium)</Button>
+          <Button variant="secondary" onClick={applyApiTestHigh} className="!py-2 !px-4 text-sm whitespace-nowrap !bg-red-50 !text-red-700 !border-red-200">Preset API HighRisk (case-high)</Button>
         </div>
       </div>
 
